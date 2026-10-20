@@ -7,7 +7,7 @@ description = "Debugging and fixing a wrong-code bug in GCC's loop vectorizer (P
 tags = ["gcc", "compilers", "vectorization"]
 +++
 
-I encountered a bug during a coding competition of all places. You know the kind: you solve a algorithm problem, send your code to an online judge, and you get a verdict back. What do you do when you get back a "Wrong Answer" though? You blame ~~the compiler~~ yourself, of course. But what if Clang and GCC give you different outputs, which one do you trust?
+I encountered a bug during a coding competition of all places. You know the kind: you solve an algorithm problem, send your code to an online judge, and you get a verdict back. What do you do when you get back a "Wrong Answer" though? You blame ~~the compiler~~ yourself, of course. But what if Clang and GCC give you different outputs, which one do you trust?
 
 In general, with a bug like this, most of the time it's undefined behavior. Not this time though.
 
@@ -66,7 +66,7 @@ expected  1 1 1 1 2 2 2 2 3 3 3 3 4 4 4 4
 
 {% <aside> %}_Vectorization_ means one instruction works on several values at once. A 128-bit SSE register (`xmm`) holds four `int32`s, a 256-bit AVX2 register (`ymm`) holds eight. Each slot is a _lane_.{% </aside> %}
 
-I tried some more different shapes.
+I tried a few other shapes.
 - With `int64`, it still produced wrong code.
 - With `-mavx2` and `int32`s, it produced correct code, because AVX2 makes it use its wider 256-bit `ymm` registers.
 - With `-mavx2` and `int64`, it's wrong again, because a 256-bit register only holds four 64-bit values, and the bug comes back.
@@ -291,7 +291,7 @@ The commit only touches `vectorizable_induction`, in `tree-vect-loop.c` (renamed
 
 The commit is called "Re-instantiate SLP induction IV CSE". It puts back in a shortcut that was previously removed. It's from November 2020, so it first shipped in GCC 11.1, which matches the versions above.
 
-The analysis and transform halves of `vectorizable_induction` are separated in the function. This also matches with our previous findings too, because the analysis was already correct, and the commit only changed the transform.
+The analysis and transform halves of `vectorizable_induction` are separated in the function. This also matches with our previous findings, because the analysis was already correct, and the commit only changed the transform.
 
 ## Reading the Source
 
@@ -315,8 +315,6 @@ For our loop, `group_size` is 8 and `const_nunits` (lanes per vector) is 4.\
 `least_common_multiple (2, 4) / 4` is **1**.
 
 GCC decided one vector IV was enough. Later, when it filled in the vector definitions for the remaining chunks, it copied the first IV into every slot:
-
-{% <aside> %}“Wait, it’s all modular arithmetic?”<br>“Always has been.”{% </aside> %}
 
 ```c
 /* Fill up to the number of vectors we need for the whole group.  */
@@ -360,6 +358,8 @@ if (group_sizep % const_nunits == 0)
 We create a helper: `vect_slp_induction_reuse_p` that checks the shortcut is valid. \
 For every chunk past the candidate count, it compares each lane's initial value and step against the lane at the same position in the chunk it would reuse
 (`ivn % candidate_nivs`):
+
+{% <aside> %}“Wait, it’s all modular arithmetic?”<br>“Always has been.”{% </aside> %}
 
 ```c
 for (unsigned ivn = candidate_nivs; ivn < nivs; ++ivn)
