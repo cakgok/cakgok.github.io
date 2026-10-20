@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block head_extra %}
+{{ super() }}
+<style>
+.cats{display:grid;grid-template-columns:repeat(auto-fill,minmax(10rem,1fr));gap:.5rem;margin-top:1.5rem}
+h1 .sub{font-size:.55em;font-weight:400;opacity:.6}
+.cats img{width:100%;aspect-ratio:1;object-fit:cover;cursor:zoom-in;display:block}
+</style>
+{% endblock head_extra %}
+
+{% block content %}
+<h1>{{ section.title }}{% if section.extra.subtitle %}  <span class="sub">{{ section.extra.subtitle }}</span>{% endif %}</h1>
+{{ section.content | safe }}
+{% set_global count = 0 %}
+{# The theme's lightbox opens the last srcset entry of any `article img[srcset]`. #}
+<article class="cats">
+  {% for photo in section.assets | sort | reverse %}
+  {% if (photo | split(pat=".") | last | lower) in ["jpg", "jpeg", "png", "webp"] %}
+  {% set_global count = count + 1 %}
+  {% set thumb = resize_image(path=photo, width=480, height=480, op="fill", format="webp", quality=75) %}
+  {# Lightbox gets the untouched original, copied as-is from content/cats/. #}
+  {% set meta = get_image_metadata(path=photo) %}
+  <img src="{{ thumb.url | safe }}" srcset="{{ thumb.url | safe }} 480w, {{ get_url(path=photo) | safe }} {{ meta.width }}w" sizes="14rem" alt="Cat photo" loading="lazy">
+  {% endif %}
+  {% endfor %}
+</article>
+{% if count == 0 %}
+{% endif %}
+{% endblock content %}

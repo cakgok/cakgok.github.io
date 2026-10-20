@@ -1,0 +1,6 @@
+{# Side note for use in content: in the right margin on wide screens, a ruled block in the text otherwise.
+   It lines up with the line it sits on, so put it at the start of the paragraph it annotates:
+   {% <aside> %}Credits to **someone**.{% </aside> %}The paragraph... #}
+{% component aside() -%}
+<span class="aside">{{ body }}</span>
+{%- endcomponent aside %}

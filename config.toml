@@ -1,0 +1,67 @@
+base_url = "https://cakgok.github.io"
+title = "Cem Akgok"
+description = "."
+default_language = "en"
+theme = "austere"
+
+compile_sass = false
+build_search_index = true
+generate_feeds = true
+feed_filenames = ["atom.xml", "rss.xml"]
+taxonomies = [{ name = "tags", feed = true }]
+
+[search]
+index_format = "fuse_javascript"
+
+[markdown]
+smart_punctuation = true
+
+[markdown.highlighting]
+light_theme = "github-light"
+dark_theme = "github-dark"
+add_color_scheme = false
+
+[slugify]
+paths = "on"
+taxonomies = "on"
+anchors = "on"
+
+[extra]
+keywords = "compilers, gcc, llvm, c++, linux"
+strapline = ""
+favicon = "/favicon.ico"
+
+inline_icons = true
+icon_path = "themes/austere/static/icons/"
+icons = ["light", "asleep", "rss"]
+
+image_format = "auto"
+image_quality = 80
+images_default_size = 1024
+images_sizes = [512, 1024, 2048]
+
+menu_links = [
+  { url = "$BASE_URL/posts/", name = "Posts" },
+  { url = "$BASE_URL/cats/", name = "Cats" },
+  { url = "$BASE_URL/about/", name = "About" },
+  { url = "$BASE_URL/tags/", name = "Tags" },
+  { url = "$BASE_URL/search/", name = "Search" },
+]
+
+[extra.colours.light]
+background = "#FAF7F2"
+text = "#1a1a1a"
+text_muted = "#3a3a3a"
+accent = "#9E4440"
+accent_hover = "#7A3533"
+code_bg = "#f0ebe3"
+border = "#e0d9ce"
+
+[extra.colours.dark]
+background = "#141413"
+text = "#e8e8e8"
+text_muted = "#a0a0a0"
+accent = "#E07A5F"
+accent_hover = "#F4A594"
+code_bg = "#1e1e1d"
+border = "#2a2a29"

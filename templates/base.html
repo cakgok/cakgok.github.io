@@ -1,0 +1,60 @@
+{% extends "austere/templates/base.html" %}
+
+{% block head_extra %}
+<style>
+/* Wider text column than the theme's 70ch. Set in rem, not ch: ch follows the font, so the
+   column would shrink when the web font replaces the fallback. Phones are limited by the screen. */
+html{max-width:48rem}
+/* The theme justifies paragraphs, which leaves uneven gaps between words; keep the normal ragged right edge */
+p{text-align:left}
+/* No footer: the copyright line is gone, and feed readers find the feeds via the <link rel=alternate> in <head> */
+footer.s,hr:has(+footer.s){display:none}
+/* The theme doesn't style tables: give them the same bottom margin as paragraphs and some room between columns */
+table{margin:0 0 1.5rem;border-collapse:collapse}
+th,td{padding:.15rem 1.25rem .15rem 0;text-align:left}
+/* Table of contents: folded box above the post, a sticky margin column on wide screens */
+.toc{border:1px solid;border-radius:.4rem;padding:.75rem 1rem;margin:0 0 1.5rem;font-size:.9rem}
+html.light .toc{border-color:{{ config.extra.colours.light.border }}}
+html.dark .toc{border-color:{{ config.extra.colours.dark.border }}}
+.toc summary{cursor:pointer;font-weight:600}
+.toc ul{list-style:none;margin:.5rem 0 0;padding:0}
+.toc ul ul{margin:0;padding-left:1rem}
+.toc li{margin:.2rem 0}
+html .toc a{text-decoration:none;color:inherit;opacity:.75}
+html .toc a:hover,html .toc a.is-active{opacity:1;color:var(--accent)}
+html .toc a.is-active{font-weight:600}
+@media (min-width:1360px){
+  .toc{position:fixed;top:7rem;left:max(1.5rem,calc(50vw - 24rem - 18rem));width:15rem;max-height:calc(100vh - 10rem);overflow-y:auto;border:0;padding:0;margin:0}
+  .toc summary{pointer-events:none;list-style:none;text-transform:uppercase;letter-spacing:.06em;font-size:.75rem;opacity:.7}
+  .toc summary::-webkit-details-marker{display:none}
+}
+/* Side notes (the aside shortcode): a ruled block in the text, the right margin on wide screens */
+.aside{display:block;margin:.75rem 0;padding:.35rem 0;border:solid;border-width:1px 0;font-size:.85rem;line-height:1.5;opacity:.8}
+html.light .aside{border-color:{{ config.extra.colours.light.border }}}
+html.dark .aside{border-color:{{ config.extra.colours.dark.border }}}
+@media (min-width:1360px){
+  .aside{float:right;clear:right;width:15rem;margin:.2rem -17rem 1rem 0;padding:0;border:0}
+}
+</style>
+{% endblock head_extra %}
+
+{% block body_end %}
+{{ super() }}
+<script>
+(function(){
+  var toc=document.querySelector('.toc');if(!toc)return;
+  var wide=matchMedia('(min-width:1360px)');
+  function fold(){if(wide.matches)toc.open=true}
+  fold();wide.addEventListener('change',fold);
+  var links=[].slice.call(toc.querySelectorAll('a[href*="#"]')),byId={};
+  links.forEach(function(a){byId[decodeURIComponent(a.hash.slice(1))]=a});
+  var heads=[].slice.call(document.querySelectorAll('article h2[id],article h3[id]')).filter(function(h){return byId[h.id]});
+  function mark(){
+    var cur=null;heads.forEach(function(h){if(h.getBoundingClientRect().top<120)cur=h});
+    links.forEach(function(a){a.classList.remove('is-active')});
+    if(cur)byId[cur.id].classList.add('is-active');
+  }
+  addEventListener('scroll',mark,{passive:true});mark();
+})();
+</script>
+{% endblock body_end %}
