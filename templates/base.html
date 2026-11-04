@@ -7,11 +7,32 @@
 html{max-width:48rem}
 /* The theme justifies paragraphs, which leaves uneven gaps between words; keep the normal ragged right edge */
 p{text-align:left}
+/* Long identifiers in prose must fit narrow screens; preformatted code can still scroll */
+article{overflow-wrap:anywhere}
 /* No footer: the copyright line is gone, and feed readers find the feeds via the <link rel=alternate> in <head> */
 footer.s,hr:has(+footer.s){display:none}
 /* The theme doesn't style tables: give them the same bottom margin as paragraphs and some room between columns */
 table{margin:0 0 1.5rem;border-collapse:collapse}
 th,td{padding:.15rem 1.25rem .15rem 0;text-align:left}
+/* SVG placement and Markdown: one column on phones, optional columns on larger screens */
+.svg-block{display:grid;grid-template-columns:minmax(0,1fr);gap:1.5rem;align-items:start;margin:0 0 1.5rem}
+.svg-block>svg{display:block;width:100%;max-width:100%;height:auto;min-width:0}
+.svg-position-left>svg{justify-self:start}
+.svg-position-right>svg{justify-self:end}
+.svg-position-center>svg,.svg-layout-beside.svg-has-text>svg{justify-self:center}
+.svg-text{min-width:0;text-align:left}
+.svg-text p{text-align:inherit}
+.svg-text-align-center>.svg-text{text-align:center}
+.svg-text-align-right>.svg-text{text-align:right}
+.svg-text-valign-center>.svg-text{align-self:center}
+.svg-text-valign-bottom>.svg-text{align-self:end}
+.svg-text>:last-child{margin-bottom:0}
+@media (min-width:48rem){
+  .svg-layout-beside.svg-has-text:not(.svg-position-center){grid-template-columns:280px minmax(0,1fr);grid-template-areas:"diagram text"}
+  .svg-layout-beside.svg-has-text.svg-position-right{grid-template-columns:minmax(0,1fr) 280px;grid-template-areas:"text diagram"}
+  .svg-layout-beside.svg-has-text:not(.svg-position-center)>svg{grid-area:diagram}
+  .svg-layout-beside.svg-has-text:not(.svg-position-center)>.svg-text{grid-area:text}
+}
 /* Table of contents: folded box above the post, a sticky margin column on wide screens */
 .toc{border:1px solid;border-radius:.4rem;padding:.75rem 1rem;margin:0 0 1.5rem;font-size:.9rem}
 html.light .toc{border-color:{{ config.extra.colours.light.border }}}

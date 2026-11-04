@@ -1,0 +1,21 @@
+{# SVG formatting options:
+   position: left (default), right, center. Center puts the SVG above the text.
+   layout: beside (default), stacked. Beside also stacks below 768px.
+   text_valign: top (default), center, bottom. Aligns text vertically beside the SVG.
+   text_align: left (default), center, right. Aligns the text within its column.
+   Omit the body with a self-closing include to show just the SVG.
+
+   {% <svg path="..." position="right" text_valign="center"> %}
+   Your Markdown here.
+   {% </svg> %}
+   {{ <svg path="..." position="center"/> }}
+#}
+{% component svg(path, position="left", layout="beside", text_valign="top", text_align="left") -%}
+{%- set has_text = body is defined and body | trim -%}
+<div class="svg-block svg-position-{{ position }} svg-layout-{{ layout }} svg-text-valign-{{ text_valign }} svg-text-align-{{ text_align }}{% if has_text %} svg-has-text{% endif %}">
+{{ load_data(path=path, format="plain") | safe }}
+{%- if has_text %}
+<div class="svg-text">{{ body | markdown | safe }}</div>
+{%- endif -%}
+</div>
+{%- endcomponent svg %}
