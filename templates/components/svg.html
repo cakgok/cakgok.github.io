@@ -3,6 +3,10 @@
    layout: beside (default), stacked. Beside also stacks below 768px.
    text_valign: top (default), center, bottom. Aligns text vertically beside the SVG.
    text_align: left (default), center, right. Aligns the text within its column.
+   panels: optional, for a figure made of panels side by side. When the whole figure would be
+     too small to read, buttons above it show one panel at a time (see the script in base.html).
+     "A | B | C" names the SVG's top-level <g> elements in order; "A @ 0-318 | B @ 318-720"
+     splits the viewBox at those x coordinates instead, for SVGs without one group per panel.
    Omit the body with a self-closing include to show just the SVG.
 
    {% <svg path="..." position="right" text_valign="center"> %}
@@ -10,10 +14,11 @@
    {% </svg> %}
    {{ <svg path="..." position="center"/> }}
 #}
-{% component svg(path, position="left", layout="beside", text_valign="top", text_align="left") -%}
+{% component svg(path, position="left", layout="beside", text_valign="top", text_align="left", panels="") -%}
 {%- set has_text = body is defined and body | trim -%}
-<div class="svg-block svg-position-{{ position }} svg-layout-{{ layout }} svg-text-valign-{{ text_valign }} svg-text-align-{{ text_align }}{% if has_text %} svg-has-text{% endif %}">
-{{ load_data(path=path, format="plain") | safe }}
+{# Blank lines end CommonMark HTML blocks, allowing paragraph tags inside the SVG. #}
+<div class="svg-block svg-position-{{ position }} svg-layout-{{ layout }} svg-text-valign-{{ text_valign }} svg-text-align-{{ text_align }}{% if has_text %} svg-has-text{% endif %}"{% if panels %} data-panels="{{ panels }}"{% endif %}>
+{{ load_data(path=path, format="plain") | regex_replace(pattern="\\n\\s*\\n", rep="\n") | safe }}
 {%- if has_text %}
 <div class="svg-text">{{ body | markdown | safe }}</div>
 {%- endif -%}
