@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     id="fig-call-frame-before-after"
+     viewBox="34 42 663 395" width="663" height="395"
+     style="width: 663px; max-width: 100%; height: auto;"
+     role="img"
+     font-family="'IBM Plex Sans', system-ui, sans-serif">
+  <title id="cfba-title">Emergency spill slot before and after enabling a frame pointer</title>
+  <defs>
+    <marker id="cfba-arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10z" fill="currentColor" />
+    </marker>
+  </defs>
+
+  <g fill="currentColor" text-anchor="middle">
+    <text x="177" y="64" font-size="13" font-weight="600">Before: no frame pointer</text>
+    <text x="537" y="64" font-size="13" font-weight="600">After: frame pointer enabled</text>
+    <text x="177" y="88" font-size="11.5" fill-opacity="0.65">incoming SP</text>
+    <text x="537" y="88" font-size="11.5" fill-opacity="0.65">incoming SP</text>
+  </g>
+
+  <!-- Before: locals, emergency slot, reserved outgoing call area. -->
+  <g fill="currentColor" fill-opacity="0.06" stroke="currentColor" stroke-opacity="0.6">
+    <rect x="92" y="104" width="170" height="112" />
+    <rect x="92" y="244" width="170" height="96" />
+  </g>
+  <rect x="92" y="216" width="170" height="28"
+        fill="#d1495b" fill-opacity="0.14" stroke="#d1495b" stroke-width="1.5" />
+  <g fill="currentColor" text-anchor="middle" font-size="12.5">
+    <text x="177" y="164">locals</text>
+    <text x="177" y="234" font-weight="600">emergency slot</text>
+    <text x="177" y="285">reserved outgoing</text>
+    <text x="177" y="303">call area</text>
+  </g>
+  <line x1="42" y1="340" x2="88" y2="340"
+        stroke="currentColor" stroke-width="1.3" marker-end="url(#cfba-arrow)" />
+  <text x="44" y="332" fill="currentColor" font-size="12.5" font-weight="600">SP</text>
+  <path d="M266 340h8V244h-8" fill="none" stroke="#d1495b" stroke-width="1.5" />
+  <text x="293" y="292" transform="rotate(-90 293 292)"
+        text-anchor="middle" fill="#d1495b" font-size="12" font-weight="600">&gt; 2047 B</text>
+
+  <!-- Enabling FP also selects the existing upper-slot placement policy. -->
+  <g fill="currentColor" text-anchor="middle" font-size="11.5">
+    <text x="357" y="185">enable FP</text>
+    <text x="357" y="203">AND</text>
+    <text x="357" y="217">move slot</text>
+
+  </g>
+  <line x1="321" y1="226" x2="393" y2="226"
+        stroke="currentColor" stroke-opacity="0.7" stroke-width="1.3"
+        marker-end="url(#cfba-arrow)" />
+
+  <!-- After: emergency slot, locals, unchanged reserved outgoing call area. -->
+  <rect x="452" y="104" width="170" height="28"
+        fill="#2a9d7f" fill-opacity="0.2" stroke="#2a9d7f" stroke-width="1.5" />
+  <g fill="currentColor" fill-opacity="0.06" stroke="currentColor" stroke-opacity="0.6">
+    <rect x="452" y="132" width="170" height="112" />
+    <rect x="452" y="244" width="170" height="96" />
+  </g>
+  <g fill="currentColor" text-anchor="middle" font-size="12.5">
+    <text x="537" y="122" font-weight="600">emergency slot</text>
+    <text x="537" y="192">locals</text>
+    <text x="537" y="285">reserved outgoing</text>
+    <text x="537" y="303">call area</text>
+  </g>
+  <g stroke="currentColor" stroke-width="1.3" marker-end="url(#cfba-arrow)">
+    <line x1="402" y1="104" x2="448" y2="104" />
+    <line x1="402" y1="340" x2="448" y2="340" />
+  </g>
+  <g fill="currentColor" font-size="12.5" font-weight="600">
+    <text x="404" y="96">FP</text>
+    <text x="404" y="332">SP</text>
+  </g>
+  <path d="M626 104h8V132h-8" fill="none" stroke="#2a9d7f" stroke-width="1.5" />
+  <text x="644" y="122" fill="#2a9d7f" font-size="12" font-weight="600">near FP</text>
+
+  <g text-anchor="middle" font-size="12">
+    <text x="177" y="374" fill="#d1495b" font-weight="600">Slot is beyond SP's reach</text>
+    <text x="537" y="374" fill="#2a9d7f" font-weight="600">Slot is within FP's reach</text>
+    <g fill="currentColor" fill-opacity="0.7">
+      <text x="177" y="394">Outgoing area separates SP and slot.</text>
+      <text x="537" y="394">Locals grow below the slot.</text>
+      <text x="360" y="426" font-size="11.5">Call area stays reserved · no realignment</text>
+    </g>
+  </g>
+</svg>

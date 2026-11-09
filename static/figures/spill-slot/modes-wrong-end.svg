@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" id="fig-modes-wrong-end" viewBox="0 38 280 316" width="280" height="316" style="width: 280px; max-width: 100%; height: auto;" role="img" font-family="'IBM Plex Sans', system-ui, sans-serif">
+  <defs>
+    <marker id="fm-wrong-end-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10z" fill="currentColor" />
+    </marker>
+  </defs>
+  <rect x="65" y="96" width="150" height="194" fill="currentColor" fill-opacity="0.06" stroke="currentColor" stroke-opacity="0.6" />
+  <rect x="65" y="70" width="150" height="26" fill="#d1495b" fill-opacity="0.14" stroke="#d1495b" stroke-width="1.5" />
+  <g text-anchor="middle" fill="currentColor" font-size="12.5">
+    <text x="140" y="58" font-size="11.5" fill-opacity="0.65">incoming SP</text>
+    <text x="140" y="87" font-weight="600">slot</text>
+    <text x="140" y="198">locals</text>
+  </g>
+  <path d="M219 290h8V83h-8" fill="none" stroke="#d1495b" stroke-width="1.5" />
+  <text transform="rotate(-90 242 186)" x="242" y="186" text-anchor="middle" font-size="12" fill="#d1495b" font-weight="600">&gt; 1020 B</text>
+  <line x1="10" y1="290" x2="61" y2="290" stroke="currentColor" stroke-width="1.3" marker-end="url(#fm-wrong-end-arrow)" />
+  <text x="12" y="282" font-size="12.5" font-weight="600" fill="currentColor">SP == FP</text>
+  <g fill="currentColor" font-size="12" text-anchor="middle">
+    <text x="140" y="324" fill="#2a9d7f" font-weight="600">Fix: put the slot next to SP</text>
+    <text x="140" y="342" fill-opacity="0.7">(Mips and SystemZ do this)</text>
+  </g>
+</svg>
