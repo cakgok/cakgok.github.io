@@ -75,7 +75,7 @@ If we apply the same reasoning, you can see how we'll have a problem.
 
 This circular logic leads to a crash in LLVM: **Incomplete scavenging after 2nd pass**.
 
-The code makes it obvious in [`RegisterScavenging.cpp`](https://github.com/llvm/llvm-project/blob/5f576704c2b701878c22c4841e68133cbfb5593e/llvm/lib/CodeGen/RegisterScavenging.cpp#L473-L498) (simplified):
+The code makes it obvious in [`RegisterScavenging.cpp`](https://github.com/llvm/llvm-project/blob/4c22a9f755be90fa8ce385f589761033609fe66f/llvm/lib/CodeGen/RegisterScavenging.cpp#L473-L498) (simplified):
 ```cpp
 bool Again = scavengeFrameVirtualRegsInBlock(MRI, RS, MBB);
 if (Again) {
@@ -161,7 +161,7 @@ Xtensa has 16 general-purpose registers. The return address, SP and FP occupy 3 
 
 {% <aside> %} Xtensa only reserves space for stack arguments in advance when there is no FP. We'll come back to this in section C. {% </aside> %}
 
-The fix is simple: you just override the placement of the slot ([#237791](https://github.com/llvm/llvm-project/pull/237791)). This is what SystemZ and Mips do as well. [SystemZ's override](https://github.com/llvm/llvm-project/blob/5f576704c2b701878c22c4841e68133cbfb5593e/llvm/lib/Target/SystemZ/SystemZFrameLowering.h#L35-L39) comes with a comment that describes this exact case:
+The fix is simple: you just override the placement of the slot ([#237791](https://github.com/llvm/llvm-project/pull/237791)). This is what SystemZ and Mips do as well. [SystemZ's override](https://github.com/llvm/llvm-project/blob/4c22a9f755be90fa8ce385f589761033609fe66f/llvm/lib/Target/SystemZ/SystemZFrameLowering.h#L35-L39) comes with a comment that describes this exact case:
 
 > The default implementation assumes an x86-like layout, where the frame pointer is at the opposite end of the frame from the stack pointer. This meant that when frame pointer elimination was disabled, the slots ended up being as close as possible to the incoming stack pointer, which is the opposite of what we want on SystemZ.
 
@@ -179,7 +179,7 @@ There is another way the slot ends up on the wrong side, and that's with an over
 
 This case has come up before: when the stack is realigned, PEI places the slot near SP instead ([`cad78a763455`](https://github.com/llvm/llvm-project/commit/cad78a763455)). A base pointer can cause the same mismatch. In AArch64, functions with VLAs kept the slot at the top of the frame but addressed it from the base pointer at the other end, and the fix was to reach it from the FP ([`f2c22050e821`](https://github.com/llvm/llvm-project/commit/f2c22050e821)).
 
-The default implementation of [`allocateScavengingFrameIndexesNearIncomingSP()`](https://github.com/llvm/llvm-project/blob/5f576704c2b701878c22c4841e68133cbfb5593e/llvm/lib/CodeGen/TargetFrameLoweringImpl.cpp#L173-L181) accounts for this. It only places the slot near the incoming SP when there is an FP and the stack is not realigned:
+The default implementation of [`allocateScavengingFrameIndexesNearIncomingSP()`](https://github.com/llvm/llvm-project/blob/4c22a9f755be90fa8ce385f589761033609fe66f/llvm/lib/CodeGen/TargetFrameLoweringImpl.cpp#L172-L180) accounts for this. It only places the slot near the incoming SP when there is an FP and the stack is not realigned:
 
 ```cpp
 bool TargetFrameLowering::allocateScavengingFrameIndexesNearIncomingSP(
@@ -293,15 +293,15 @@ void f(volatile int *q, const struct big *p) {
 
 ```
 $ clang --target=thumbv7m-none-eabi -O2 -S repro.c     # LLVM built with assertions
-Assertion `TFI->hasReservedCallFrame(MF) && "Cannot use SP to access the emergency spill slot in functions without a reserved call frame"' failed.
+Assertion `TFI->hasReservedCallFrame(MF) && "Cannot use SP to access the emergency spill slot in " "functions without a reserved call frame"' failed.
 ```
 
-The assertion sits right below a comment that explains it, in [`ARMBaseRegisterInfo.cpp`](https://github.com/llvm/llvm-project/blob/5f576704c2b701878c22c4841e68133cbfb5593e/llvm/lib/Target/ARM/ARMBaseRegisterInfo.cpp#L864-L867):
+The assertion sits right below a comment that explains it, in [`ARMBaseRegisterInfo.cpp`](https://github.com/llvm/llvm-project/blob/4c22a9f755be90fa8ce385f589761033609fe66f/llvm/lib/Target/ARM/ARMBaseRegisterInfo.cpp#L864-L867):
 
 > `PEI::scavengeFrameVirtualRegs()` cannot accurately track `SPAdj` because the call frame setup/destroy instructions have already been eliminated.
  That means the stack pointer cannot be used to access the emergency spill slot when `!hasReservedCallFrame()`.
 
-`SPAdj` is that call-frame offset we just talked about. Frame-index elimination uses it to correct SP-relative offsets, but [`RegisterScavenging.cpp`](https://github.com/llvm/llvm-project/blob/5f576704c2b701878c22c4841e68133cbfb5593e/llvm/lib/CodeGen/RegisterScavenging.cpp#L389) hard-codes `int SPAdj = 0`: the scavenger assumes SP hasn't moved.
+`SPAdj` is that call-frame offset we just talked about. Frame-index elimination uses it to correct SP-relative offsets, but [`RegisterScavenging.cpp`](https://github.com/llvm/llvm-project/blob/4c22a9f755be90fa8ce385f589761033609fe66f/llvm/lib/CodeGen/RegisterScavenging.cpp#L389) hard-codes `int SPAdj = 0`: the scavenger assumes SP hasn't moved.
 
 Because it cannot account for the movement of the SP, the scavenger keeps using the old `[sp + offset]`. Instead of a crash, we can get a silent miscompilation. Whatever lives at that wrong address can get silently clobbered.
 
@@ -311,7 +311,7 @@ In this particular ARM example, without assertions, the resulting code looks jus
 
 ## Reserve the Call Frame or Not?
 
-So without a reserved call frame, SP can't anchor the slot. Then why does ARM stop reserving it? Here's the reason, in [`ARMFrameLowering.cpp`](https://github.com/llvm/llvm-project/blob/5f576704c2b701878c22c4841e68133cbfb5593e/llvm/lib/Target/ARM/ARMFrameLowering.cpp#L363-L374):
+So without a reserved call frame, SP can't anchor the slot. Then why does ARM stop reserving it? Here's the reason, in [`ARMFrameLowering.cpp`](https://github.com/llvm/llvm-project/blob/4c22a9f755be90fa8ce385f589761033609fe66f/llvm/lib/Target/ARM/ARMFrameLowering.cpp#L363-L374):
 
 ```cpp
 // It's not always a good idea to include the call frame as part of the
@@ -324,9 +324,9 @@ if (CFSize >= ((1 << 12) - 1) / 2)  // Half of imm12
 
 Wait a minute, that's part of the fix from section B? ARM stops reserving large call frames so the slot stays in reach, but it doesn't force an FP. Do you see why this is such a painful and recurring problem? We fixed one issue by not reserving the call frame, and now we're hitting the same problem because we *didn't* reserve it. Neither choice works on its own. We can't ask the stack pointer to do both jobs. It can either move around calls or anchor the slot.
 
-The way out of this is to give the second job to a register that doesn't move. LLVM's default already does this: [`hasReservedCallFrame()`](https://github.com/llvm/llvm-project/blob/5f576704c2b701878c22c4841e68133cbfb5593e/llvm/include/llvm/CodeGen/TargetFrameLowering.h#L315-L317) returns `!hasFP(MF)`. SP only moves when there's also an FP. That's also why the second fix in B forces an FP. ARM overrides the default to fix B and loses that guarantee.
+The way out of this is to give the second job to a register that doesn't move. LLVM's default already does this: [`hasReservedCallFrame()`](https://github.com/llvm/llvm-project/blob/4c22a9f755be90fa8ce385f589761033609fe66f/llvm/include/llvm/CodeGen/TargetFrameLowering.h#L315-L317) returns `!hasFP(MF)`. SP only moves when there's also an FP. That's also why the second fix in B forces an FP. ARM overrides the default to fix B and loses that guarantee.
 
-{% <aside> %} This was corrected in Thumb1, where it [forces a base pointer](https://github.com/llvm/llvm-project/blob/5f576704c2b701878c22c4841e68133cbfb5593e/llvm/lib/Target/ARM/ARMBaseRegisterInfo.cpp#L484-L489) whenever SP moves, "for correctness in cases where we need an emergency spill slot." {% </aside> %}
+{% <aside> %} This was corrected in Thumb1, where it [forces a base pointer](https://github.com/llvm/llvm-project/blob/4c22a9f755be90fa8ce385f589761033609fe66f/llvm/lib/Target/ARM/ARMBaseRegisterInfo.cpp#L484-L489) whenever SP moves, "for correctness in cases where we need an emergency spill slot." {% </aside> %}
 
 Why not always force a stable reference from an FP/BP then? Well, the cost is a register. If your target has many registers, losing one to the FP may not matter much. On Xtensa, with only 14 usable general-purpose registers, you probably don't want it in every function, considering you only need it where the call frame is too big for SP to reach across.
 
@@ -348,4 +348,4 @@ Next up, I'll look at how to decide whether to reserve an emergency spill slot a
 
 ---
 
-Disclaimer: All reproducers were tested with LLVM head at the time: [`5f576704c2b7`](https://github.com/llvm/llvm-project/commit/5f576704c2b701878c22c4841e68133cbfb5593e) (24.0.0git).
+Disclaimer: All reproducers were tested with LLVM main at [`4c22a9f755be`](https://github.com/llvm/llvm-project/commit/4c22a9f755be90fa8ce385f589761033609fe66f) (24.0.0git, built with assertions). Xtensa is an experimental target, builds need it explicitly enabled.
