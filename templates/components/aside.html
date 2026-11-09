@@ -1,6 +1,12 @@
 {# Side note for use in content: in the right margin on wide screens, a ruled block in the text otherwise.
-   It lines up with the line it sits on, so put it at the start of the paragraph it annotates:
-   {% <aside> %}Credits to **someone**.{% </aside> %}The paragraph... #}
+   Put it after the block it annotates (paragraph, code block, list, figure), with a blank line on both sides;
+   on wide screens a script in base.html moves it beside the top of that block. Without the blank line after it,
+   Markdown merges it into the next paragraph and it stays beside that one:
+   The paragraph...
+
+   {% <aside> %}Credits to **someone**.{% </aside> %}
+
+   The next paragraph... #}
 {% component aside() -%}
 <span class="aside">{{ body }}</span>
 {%- endcomponent aside %}
