@@ -64,12 +64,12 @@ expected  1 1 1 1 2 2 2 2 3 3 3 3 4 4 4 4
 
 ## Experimenting With Flags
 
-{% <aside> %}_Vectorization_ means one instruction works on several values at once. A 128-bit SSE register (`xmm`) holds four `int32`s, a 256-bit AVX2 register (`ymm`) holds eight. Each slot is a _lane_.{% </aside> %}
-
 I tried a few other shapes.
 - With `int64`, it still produced wrong code.
 - With `-mavx2` and `int32`s, it produced correct code, because AVX2 makes it use its wider 256-bit `ymm` registers.
 - With `-mavx2` and `int64`, it's wrong again, because a 256-bit register only holds four 64-bit values, and the bug comes back.
+
+{% <aside> %}_Vectorization_ means one instruction works on several values at once. A 128-bit SSE register (`xmm`) holds four `int32`s, a 256-bit AVX2 register (`ymm`) holds eight. Each slot is a _lane_.{% </aside> %}
 
 | Flags                         | Element | Result  |
 |-------------------------------|---------|---------|
@@ -84,13 +84,13 @@ I tried a few other shapes.
 
 I also realized if you put a print statement inside the loop, the bug goes away. Moreover, at `-O1` it was correct. `-O2` was wrong, and `-O3` was correct again.
 
-{% <aside> %}Two ways of vectorizing: the first is Superword-Level Parallelism (SLP), also called straight-line. It looks at side-by-side operations, and packs them into a vector operation if it can.{% </aside> %}
-
 One thing that confused me was `-fno-tree-slp-vectorize`. Apparently, it only disables the separate basic-block SLP pass. The loop vectorizer's own SLP still runs, so it doesn't help.
 
-{% <aside> %}The other is loop vectorization. It packs the same statement from different iterations into a single vector. In this example, the loop vectorizer uses SLP to pack operations within one iteration.{% </aside> %}
+{% <aside> %}Two ways of vectorizing: the first is Superword-Level Parallelism (SLP), also called straight-line. It looks at side-by-side operations, and packs them into a vector operation if it can.{% </aside> %}
 
 `-O3` threw me off too, but GCC has an attribute, `__attribute__((noipa))`, for exactly this purpose. It lets us disable interprocedural optimizations between functions, such as inlining. That's why `fill` has it in the reproducer above: with it, `-O3` is wrong too. Note that `__attribute__((noinline))` was not enough to bring the bug back at `-O3`.
+
+{% <aside> %}The other is loop vectorization. It packs the same statement from different iterations into a single vector. In this example, the loop vectorizer uses SLP to pack operations within one iteration.{% </aside> %}
 
 The bug was present in all the major releases from 11.1 up to 16.1, which was the latest at that point. At `-O2` it only shows up from 12.1, because GCC 12 is when `-O2` started vectorizing.
 
@@ -139,12 +139,12 @@ So, I checked the generated assembly. *(This is with 16.1, -O2)*
 
 If you check it at `-O1`, you will see that it doesn't use `xmm` registers at all. It does scalar operations on general purpose registers.
 
-{% <aside> %}There is also a future lesson here: I would have had an easier time if I had chosen more distinct values to investigate. It would have been so much easier to just dump everything and `grep` for that distinct value. {% </aside> %}
-
 - Apparently, `pcmpeqd` + `psrld xmm0, 31` is a trick for building {1,1,1,1} without loading anything from memory. Compare a register with itself to get all-ones bits, then shift each 32-bit lane right by 31. Pretty cool.
 - `mov edx, 2` + `movd` + `pshufd xmm1, xmm1, 0` fills `xmm1` with [2, 2, 2, 2].\
 At first glance I thought this was y (which also starts at 2), but `xmm1` is only ever used to increment `xmm0` via `paddd`. So, it's the step instead.
 - Looking at the stores in the loop body, we see that it writes `xmm0` to memory, shifts 16 bytes, and writes `xmm0` again before adding the step. (Well, actually, it shifts 32 bytes and writes to -16, but I digress.)
+
+{% <aside> %}There is also a future lesson here: I would have had an easier time if I had chosen more distinct values to investigate. It would have been so much easier to just dump everything and `grep` for that distinct value. {% </aside> %}
 
 The point is, there should be a second vector but it's using `xmm0` for both halves of the array.
 
@@ -152,17 +152,13 @@ Suspicious.
 
 ## Checking the GIMPLE Dumps
 
-{% <aside> %}GIMPLE is the intermediate representation (IR) of GCC where most of the optimizations happen. It's then passed off to the backend for code generation.{% </aside> %}
-
 Since I already suspect that the bug is in the vectorizer, the plan is to check both sides: the GIMPLE given to the backend, and the GIMPLE going into the vectorizer.
+
+{% <aside> %}GIMPLE is the intermediate representation (IR) of GCC where most of the optimizations happen. It's then passed off to the backend for code generation.{% </aside> %}
 
 First question to answer is this: Is the GIMPLE handed to the backend already wrong? If it is, this will clear the backend.
 
 `-fdump-tree-optimized` is the flag we need to see what is passed.
-
-{% <aside> %}In Static Single Assignment (SSA) form, every variable can only be assigned once. Each assignment gets a new numbered name: `x_58` and `x_50` are versions of `x`, and `_28` is a temporary.{% </aside> %}
-
-{% <aside> %}A _PHI_ node is how the compiler handles a variable whose value depends on which path the code took to get here. In a loop, that's either entering it for the first time or jumping back from the previous iteration. The numbers in brackets are the blocks the values come from: `(3)` is before the loop, `(4)` is the loop itself.{% </aside> %}
 
 ```c
 <bb 4>:
@@ -176,6 +172,10 @@ First question to answer is this: Is the GIMPLE handed to the backend already wr
   if (_4 != ivtmp.23_60) goto <bb 4>;
 ```
 
+{% <aside> %}In Static Single Assignment (SSA) form, every variable can only be assigned once. Each assignment gets a new numbered name: `x_58` and `x_50` are versions of `x`, and `_28` is a temporary.{% </aside> %}
+
+{% <aside> %}A _PHI_ node is how the compiler handles a variable whose value depends on which path the code took to get here. In a loop, that's either entering it for the first time or jumping back from the previous iteration. The numbers in brackets are the blocks the values come from: `(3)` is before the loop, `(4)` is the loop itself.{% </aside> %}
+
 - The PHI takes its initial value {1,1,1,1}, which is stored to bytes 0–15 and again to bytes 16–31, giving `1 1 1 1 1 1 1 1`.
 - _28 = {3,3,3,3} and the pointer advances 32 bytes.
 - Second iteration gives `3 3 3 3 3 3 3 3`. That's the wrong output from the reproducer.
@@ -186,9 +186,9 @@ As expected, it lines up with the assembly: the PHI is xmm0, the step is xmm1.
 
 `-fno-tree-vectorize` eliminates the bug. However it doesn't prove the vectorizer is faulty. Maybe an earlier pass merged x and y and the vectorizer merely exposed it? So, we check if the IR that the vectorizer receives is correct. If it is, that narrows the search to the vectorizer or a later pass.
 
-{% <aside> %} `-fdump-passes` dumps the list of optimization passes, and you can check the ordering. {% </aside> %}
-
 The last dump before the vectorizer runs can be checked with: `-fdump-tree-ifcvt`.
+
+{% <aside> %} `-fdump-passes` dumps the list of optimization passes, and you can check the ordering. {% </aside> %}
 
 Trimmed:
 ```c
@@ -211,15 +211,13 @@ Trimmed:
   i_47 = i_60 + 8;
 ```
 
-{% <aside> %}An _induction variable_ (IV) is a variable that changes by a fixed step every iteration, like `x += 2`.{% </aside> %}
-
 There are four PHI nodes (four scalar induction variables: `rounds`, `x`, `y`, `i`). `x_58` starts at 1 and `y_59` starts at 2. Eight consecutive stores form a contiguous 32-byte group. This proves that everything the vectorizer needs is here and correct.
+
+{% <aside> %}An _induction variable_ (IV) is a variable that changes by a fixed step every iteration, like `x += 2`.{% </aside> %}
 
 ## What Happens Inside the Vectorizer
 
 We can check the whole vectorization pass with `-fdump-tree-vect-details`.
-
-{% <aside> %}Scalar Evolution (SCEV) is how GCC summarizes a loop variable's behavior into a `{init, +, step}` progression, rather than chasing individual assignments around the loop body.{% </aside> %}
 
 First, we look at the plan. This shows that the vectorizer's analysis is correct. Early in the pass (`vect_analyze_scalar_cycles`), the scalar evolution (SCEV) analysis recognizes each PHI as an induction. It separates x and y as two distinct IVs with different initial values.
 ```
@@ -228,6 +226,8 @@ step: 2,   init: 1              Detected induction.   <- x
 step: 2,   init: 2              Detected induction.   <- y
 step: 8,   init: 0              Detected induction.   <- i
 ```
+
+{% <aside> %}Scalar Evolution (SCEV) is how GCC summarizes a loop variable's behavior into a `{init, +, step}` progression, rather than chasing individual assignments around the loop body.{% </aside> %}
 
 The store group becomes a single SLP node (0x...4798) with 8 lanes. Its only child node is an induction-PHI node with 8 lanes (0x...4838), one per stored value:
 
@@ -271,9 +271,9 @@ add new stmt: MEM <vector(4) int> [(int *)vectp_ans.16_77] = vect_vec_iv_.15_29;
 
 This dump narrows the problem down.
 
-{% <aside> %}A _vector IV_ is the same thing in vector form: `vect_vec_iv_` starts at {1,1,1,1} and gets {2,2,2,2} added each iteration.{% </aside> %}
-
 Looking at what `transform store` and `transform induction phi` just emitted, we can see that it generates two 16-byte vector stores (ans[0..3] at vectp_ans.16_27, and ans[4..7] at + 16), which is expected. However, both stores write the exact same `vect_vec_iv_.15_29` variable.
+
+{% <aside> %}A _vector IV_ is the same thing in vector form: `vect_vec_iv_` starts at {1,1,1,1} and gets {2,2,2,2} added each iteration.{% </aside> %}
 
 There is no IV starting at { 2, 2, 2, 2 } anywhere. The only { 2, 2, 2, 2 } is the step: the IV for y was never built.
 
@@ -287,9 +287,9 @@ Perfect.
 
 The commit only touches `vectorizable_induction`, in `tree-vect-loop.c` (renamed to `tree-vect-loop.cc` in 2022).
 
-{% <aside> %}CSE: Common subexpression elimination. Reusing a value instead of computing it twice, which is exactly what went wrong.{% </aside> %}
-
 The commit is called "Re-instantiate SLP induction IV CSE". It puts back in a shortcut that was previously removed. It's from November 2020, so it first shipped in GCC 11.1, which matches the versions above.
+
+{% <aside> %}CSE: Common subexpression elimination. Reusing a value instead of computing it twice, which is exactly what went wrong.{% </aside> %}
 
 The analysis and transform halves of `vectorizable_induction` are separated in the function. This also matches with our previous findings, because the analysis was already correct, and the commit only changed the transform.
 
@@ -297,8 +297,6 @@ The analysis and transform halves of `vectorizable_induction` are separated in t
 
 To vectorize the loop, `vectorizable_induction` builds a vector IV for
 each chunk (one vector's worth of lanes). Here that means two vector IVs, one for the `x` lanes and one for the `y` lanes. Each vector IV costs a register and an add per iteration, so the vectorizer tries not to build more than it needs. Before the fix, the count was computed like this (in `gcc/tree-vect-loop.cc`):
-
-{% <aside> %}`nivs` is basically the "Number of Induction Vectors". `ivn` is just the loop counter.{% </aside> %}
 
 ```c
 /* Compute the number of distinct IVs we need.  First reduce
@@ -313,6 +311,8 @@ As the comment says, this is the number of distinct IVs to build.
 For our loop, `group_size` is 8 and `const_nunits` (lanes per vector) is 4.\
 `group_sizep` becomes 2.\
 `least_common_multiple (2, 4) / 4` is **1**.
+
+{% <aside> %}`nivs` is basically the "Number of Induction Vectors". `ivn` is just the loop counter.{% </aside> %}
 
 GCC decided one vector IV was enough. Later, when it filled in the vector definitions for the remaining chunks, it copied the first IV into every slot:
 
@@ -359,8 +359,6 @@ We create a helper: `vect_slp_induction_reuse_p` that checks the shortcut is val
 For every chunk past the candidate count, it compares each lane's initial value and step against the lane at the same position in the chunk it would reuse
 (`ivn % candidate_nivs`):
 
-{% <aside> %}“Wait, it’s all modular arithmetic?”<br>“Always has been.”{% </aside> %}
-
 ```c
 for (unsigned ivn = candidate_nivs; ivn < nivs; ++ivn)
   {
@@ -377,6 +375,8 @@ for (unsigned ivn = candidate_nivs; ivn < nivs; ++ivn)
   }
 return true;
 ```
+
+{% <aside> %}“Wait, it’s all modular arithmetic?”<br>“Always has been.”{% </aside> %}
 
 If any lane differs, we throw away the candidate, keep the full count and build a separate IV for each chunk.
 
